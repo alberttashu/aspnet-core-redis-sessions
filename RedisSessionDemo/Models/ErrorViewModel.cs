@@ -1,5 +1,3 @@
-using System;
-
 namespace RedisSessionDemo.Models
 {
     public class ErrorViewModel
