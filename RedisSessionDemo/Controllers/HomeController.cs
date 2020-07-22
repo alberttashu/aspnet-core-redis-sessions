@@ -1,26 +1,41 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using RedisSessionDemo.Models;
+using System;
+using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace RedisSessionDemo.Controllers
 {
     public class HomeController : Controller
     {
         private readonly ILogger<HomeController> _logger;
+        private readonly IDistributedCache _cache;
 
-        public HomeController(ILogger<HomeController> logger)
+        public HomeController(
+            ILogger<HomeController> logger,
+            IDistributedCache cache)
         {
             _logger = logger;
+            _cache = cache;
         }
 
-        public IActionResult Index()
+        public async Task<IActionResult> Index(CancellationToken cancellationToken = default)
         {
-            return View();
+            var dateString = await _cache.GetStringAsync("time", cancellationToken);
+            if (string.IsNullOrEmpty(dateString))
+            {
+                dateString = DateTime.Now.ToLongTimeString();
+                _logger.LogInformation("Writing date time to cache");
+                await _cache.SetStringAsync("time", dateString, new DistributedCacheEntryOptions() 
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30)
+                }, cancellationToken);
+            }
+
+            return View((object)dateString);
         }
 
         public IActionResult Privacy()
